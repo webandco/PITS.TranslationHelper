@@ -6,6 +6,7 @@ namespace PITS\TranslationHelper\Domain\ViewHelper;
  */
 
 use Neos\Flow\Annotations as Flow;
+use Neos\Media\Domain\Model\AssetInterface;
 
 class CDATAContentCheckerViewHelper extends \Neos\FluidAdaptor\Core\ViewHelper\AbstractViewHelper
 {
@@ -32,6 +33,18 @@ class CDATAContentCheckerViewHelper extends \Neos\FluidAdaptor\Core\ViewHelper\A
     protected $session;
 
     /**
+     * @return void
+     * @throws \Neos\FluidAdaptor\Core\ViewHelper\Exception
+     */
+    public function initializeArguments()
+    {
+        parent::initializeArguments();
+        $this->registerArgument('id', 'string', 'Id');
+        $this->registerArgument('locale', 'string', 'Locale');
+    }
+
+
+    /**
      * Checks whether the current element is CDATA or not
      *
      * @param string $id
@@ -47,7 +60,7 @@ class CDATAContentCheckerViewHelper extends \Neos\FluidAdaptor\Core\ViewHelper\A
                 return true;
             }
         }
-        
+
         return false;
     }
 }

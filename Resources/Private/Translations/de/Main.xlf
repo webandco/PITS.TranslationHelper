@@ -840,7 +840,7 @@
                 <target xml:lang="de">Beschneiden</target>
                 <alt-trans>
                     <target xml:lang="de">
-                        <![CDATA[<i class="icon-crop"></i>]]></target>
+                        <![CDATA[<i class="fas fa-crop"></i>]]></target>
                 </alt-trans>
             </trans-unit>
       <trans-unit id="width" xml:space="preserve" approved="yes">

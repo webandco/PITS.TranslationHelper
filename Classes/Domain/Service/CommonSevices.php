@@ -5,6 +5,9 @@ namespace PITS\TranslationHelper\Domain\Service;
 // This script belongs to the TYPO3 Flow package "GVB.App".
 
 use Neos\Flow\Annotations as Flow;
+use Neos\Flow\Package;
+use Neos\Flow\Package\FlowPackageInterface;
+use Neos\Flow\Package\PackageManager;
 
 /**
  * @Flow\Scope("singleton")
@@ -19,7 +22,7 @@ class CommonSevices
 
     /**
      * @Flow\Inject
-     * @var \Neos\Flow\Package\PackageManagerInterface
+     * @var PackageManager
      */
     protected $packageManager;
 
@@ -89,7 +92,8 @@ class CommonSevices
      */
     public function getPackages()
     {
-        $packages      = $this->packageManager->getActivePackages();
+        /** @var Package[] $packages */
+        $packages      = $this->packageManager->getAvailablePackages();
         if (!empty($packages) && is_array($packages)) {
             return array_filter(array_keys($packages), function ($Key) {
                 return file_exists($this->getPackagePath($Key));
@@ -108,8 +112,11 @@ class CommonSevices
      */
     public function getPackagePath($key = "none")
     {
-        if ($this->packageManager->isPackageActive($key) && !empty($this->packageManager->getPackage($key))) {
-            return $this->packageManager->getPackage($key)->getResourcesPath() . "Private/Translations/";
+        if ($this->packageManager->isPackageAvailable($key)) {
+            $package = $this->packageManager->getPackage($key);
+            if($package instanceof FlowPackageInterface){
+                return $package->getResourcesPath() . "Private/Translations/";
+            }
         }
 
         return '';
@@ -128,7 +135,7 @@ class CommonSevices
         $this->parentFolderName   = trim($folder);
         $packageKey               = $this->session->getPackageKey();
         $file                     = $this->getPackagePath($packageKey);
-        
+
         foreach ($this->getPackageLanguages($file) as $language) {
             $directory = $file . trim($language) . "/";
             $this->getDirectoryFiles($directory, $files);
@@ -155,10 +162,10 @@ class CommonSevices
                 }
             }
             $pointer->close();
-            
+
             \clearstatcache();
         }
-       
+
         return $languages;
     }
 
@@ -175,11 +182,11 @@ class CommonSevices
         $fullLangs                    = array_merge_recursive($this->getLanguages(), $packageLangs);
         $languages                    = array_unique($fullLangs);
         $this->translationFiles       = [];
-        
+
         foreach ($languages as $language) {
             $this->translationFiles[] = $this->createFile($language);
         }
-        
+
         \clearstatcache();
     }
 
@@ -194,7 +201,7 @@ class CommonSevices
         foreach ($this->translationFiles as $translationFile) {
             $this->getTranslationFileIds($translationFile, $translationIds);
         }
-       
+
         return  array_unique($translationIds);
     }
 
@@ -217,7 +224,7 @@ class CommonSevices
                     $uniqueTranslationIds[] = $result->getAttribute("id");
                 }
             }
-            
+
             $pointer->save($file);
         }
     }
@@ -266,7 +273,7 @@ class CommonSevices
                 }
             }
         }
-                
+
         return ['status' => 'success', 'message' => $this->getTransaltionMessage('dataWasSavedSuccessfully')];
     }
 
@@ -281,11 +288,11 @@ class CommonSevices
     public function isTranslationIdExists($file = "", $id = "")
     {
         $pointer = $this->getDOMXMLPointer($file);
-            
+
         if (!empty($this->setIdAttrTransUnit($pointer, $id))) {
             return !empty($pointer->getElementById($id));
         }
-        
+
         return false;
     }
 
@@ -304,15 +311,15 @@ class CommonSevices
     {
         $pointer        = $this->getDOMXMLPointer($file);
         $bodyTagElement = $this->getBodyTagElement($pointer, $id);
-            
+
         if (!empty($bodyTagElement)) {
             $transUnit = $this->createTranslationElement($id, $pointer, $label, $cdataChecker, $encodingChecker);
             $bodyTagElement->appendChild($transUnit);
             $pointer->save($file);
-                
+
             return true;
         }
-        
+
         return false;
     }
 
@@ -336,7 +343,7 @@ class CommonSevices
             }
         }
         $pointer->save($file);
-        
+
         return true;
     }
 
@@ -351,11 +358,11 @@ class CommonSevices
     public function getTranlationNodeType($file = "", $id = "")
     {
         $pointer =  $this->getDOMXMLPointer($file);
-                
+
         if (!empty($this->setIdAttrTransUnit($pointer, $id))) {
             return $this->getNodeType($pointer, $id);
         }
-        
+
         return 0;
     }
 
@@ -372,7 +379,7 @@ class CommonSevices
     public function validateTranslationLabel($label = '', $language = '')
     {
         $file      = $this->getTranslationFileFullPath($language);
-                         
+
         if (empty($this->getLanguages()) || !in_array(trim($language), $this->getLanguages())) {
             return $this->getTransaltionMessage('invalidLanguage');
         } elseif (!is_file($file) || !file_exists($file)) {
@@ -380,10 +387,10 @@ class CommonSevices
         } elseif (empty($label) || !preg_match("/[a-zA-Z0-9\s\.]*/i", $label)) {
             return $this->getTransaltionMessage('invalidLanguageLabel', ['language' => $language]);
         }
-        
+
         return false;
     }
-    
+
     /**
      * This function is used for getting the correct translation message
      *
@@ -395,10 +402,10 @@ class CommonSevices
     public function getTransaltionMessage($id = '', $arguments = [])
     {
         $locale     = new \Neos\Flow\I18n\Locale('en');
-        
+
         return $this->translator->translateById($id, $arguments, null, $locale, "Main", "PITS.TranslationHelper");
     }
-    
+
     /**
      * This function is used for getting the full path of translation file
      *
@@ -411,10 +418,10 @@ class CommonSevices
         $packageKey    = $this->session->getPackageKey();
         $resourcePath  = $this->getPackagePath($packageKey);
         $file          = $this->session->getFile();
-        
+
         return trim($resourcePath) . trim($language)."/" . trim($file);
     }
-    
+
     /**
      * This function is used for creating a new translation unit element
      *
@@ -445,10 +452,10 @@ class CommonSevices
             $tagElement = $pointer->createElement("source", trim($label));
         }
         $transUnit->appendChild($tagElement);
-                
+
         return $transUnit;
     }
-    
+
     /**
      * This function is used for getting subdirectory path for translation directory
      */
@@ -462,10 +469,10 @@ class CommonSevices
                 return implode("/", $subdirs);
             }
         }
-            
+
         return '';
     }
-    
+
     /**
      * This function is used for creating a translation file
      * If it not exist
@@ -480,8 +487,8 @@ class CommonSevices
         $directory     = trim($packagePath) . trim($language) . "/";
         $file          = trim($directory) . trim($this->session->getFile());
         $directory     = trim($directory) . trim($this->getSubDirPath());
-        
-        if (!file_exists($file) && filesize($file) <= 0) {
+
+        if (!file_exists($file) || filesize($file) <= 0) {
             if (file_exists(trim($directory)) == false) {
                 \mkdir($directory, 0777, true);
             }
@@ -492,10 +499,10 @@ class CommonSevices
                 $this->createEmptyFile($file, $language);
             }
         }
-        
+
         return $file;
     }
-    
+
     /**
      * This function gets the list of translated files from directory
      *
@@ -543,7 +550,7 @@ class CommonSevices
             \clearstatcache();
         }
     }
-    
+
     /**
      * This function is used for getting common DOMXMLpointer
      *
@@ -559,10 +566,10 @@ class CommonSevices
         $domXmlPointer->encoding           = "UTF-8";
         $domXmlPointer->resolveExternals   = true;
         $domXmlPointer->load($file, LIBXML_NOENT);
-        
+
         return $domXmlPointer;
     }
-    
+
     /**
      * This function is used for getting Body XLFF element
      *
@@ -579,10 +586,10 @@ class CommonSevices
                 return $bodyTagElements->item(0);
             }
         }
-        
+
         return null;
     }
-    
+
     /**
      * This function is used for setting id attribute for trans-unit elements
      *
@@ -595,17 +602,17 @@ class CommonSevices
     {
         $bodyTagElement = $this->getBodyTagElement($pointer, $id);
         $elements       = null; // trans-unit xml elements
-        
+
         if (!empty($bodyTagElement)) {
             $elements = $bodyTagElement->getElementsByTagName("trans-unit");
             foreach ($elements as $element) {
                 $element->setIdAttribute("id", true);
             }
         }
-        
+
         return $elements;
     }
-    
+
     /**
      * This function is used for getting NodeType for a trans-unit element
      *
@@ -626,7 +633,7 @@ class CommonSevices
                 }
             }
         }
-        
+
         return 0;
     }
 }
